@@ -1,4 +1,5 @@
 import express from 'express';
+import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
 
 const app = express();
 
@@ -14,5 +15,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Fallback 404 após as rotas e tratamento de erros por último.
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
