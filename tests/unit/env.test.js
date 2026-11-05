@@ -29,6 +29,35 @@ test('accepts PORT when it is already a number', () => {
   assert.equal(parseEnv({ PORT: 3000 }).PORT, 3000);
 });
 
+test('accepts pooled and direct Neon PostgreSQL URLs in their respective variables', () => {
+  const pooledUrl = 'postgresql://test:test@ep-test-pooler.us-east-2.aws.neon.tech/neondb';
+  const directUrl = 'postgresql://test:test@ep-test.us-east-2.aws.neon.tech/neondb';
+
+  assert.deepEqual(parseEnv({ DATABASE_URL: pooledUrl, DIRECT_URL: directUrl }), {
+    NODE_ENV: 'development',
+    PORT: 3000,
+    LOG_LEVEL: 'info',
+    DATABASE_URL: pooledUrl,
+    DIRECT_URL: directUrl
+  });
+});
+
+test('rejects invalid database URLs without echoing their contents', () => {
+  const invalidUrl = 'not-a-url-containing-a-secret';
+
+  assert.throws(() => parseEnv({ DATABASE_URL: invalidUrl }), (error) => {
+    assert.match(error.message, /DATABASE_URL/);
+    assert.equal(error.message.includes(invalidUrl), false);
+    return true;
+  });
+});
+
+test('rejects a direct URL that uses the Neon pooler hostname', () => {
+  const pooledUrl = 'postgresql://test:test@ep-test-pooler.us-east-2.aws.neon.tech/neondb';
+
+  assert.throws(() => parseEnv({ DIRECT_URL: pooledUrl }), /DIRECT_URL/);
+});
+
 test('rejects an empty PORT without silently applying the default', () => {
   assert.throws(() => parseEnv({ PORT: '' }), (error) => {
     assert.match(error.message, /PORT/);
