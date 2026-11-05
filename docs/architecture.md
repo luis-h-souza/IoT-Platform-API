@@ -30,6 +30,19 @@ Manter estados distintos para solicitação, entrega, confirmação de recebimen
 - Cada dispositivo só pode consultar comandos e enviar eventos em seu próprio escopo.
 - Todas as rotas validam payloads e limites de tamanho.
 
+## Estado dos serviços de cadastro
+
+Os serviços internos de `Store`, `Sector` e `Device`, com validação Zod, não são montados no Express. A API ainda não possui autenticação e autorização adequadas; por isso, nenhum endpoint de gerenciamento é exposto.
+
+Antes de publicar esses endpoints, implementar e revisar:
+
+- autenticação servidor-servidor para operações administrativas chamadas pelo backend do SGM;
+- credenciais individuais, armazenadas como hash e revogáveis, para operações autenticadas pelos dispositivos;
+- autorização que limite o acesso do usuário de serviço à loja e o acesso de cada dispositivo ao próprio escopo;
+- middleware de autenticação/autorização antes dos handlers, validação HTTP dos schemas e tradução segura de erros de domínio para respostas HTTP.
+
+Os serviços de domínio devem continuar sem responsabilidade HTTP. As rotas e controllers só devem ser adicionados e montados quando essas proteções estiverem implementadas.
+
 ## Consistência e confiabilidade
 
 - Eventos carregam um identificador único gerado no dispositivo; restrição única por dispositivo evita duplicação.
