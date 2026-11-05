@@ -1,7 +1,7 @@
-import 'dotenv/config';
+import { env } from './config/env.js';
 import app from './app.js';
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 
 app.listen(PORT, () => {
   console.log(`IoT Platform API running on port ${PORT}`);
