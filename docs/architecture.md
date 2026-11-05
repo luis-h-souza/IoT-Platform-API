@@ -51,6 +51,20 @@ Os serviços de domínio devem continuar sem responsabilidade HTTP. As rotas e c
 - Operações de retry devem ser seguras e não podem repetir efeitos físicos sem política de idempotência no firmware.
 - Registrar horário de ocorrência no dispositivo e horário de recebimento no servidor.
 
+## Ciclo de vida de comandos e eventos no MVP
+
+- Comandos de iluminação representam um estado desejado (`ON` ou `OFF`), nunca uma operação de alternância.
+- O comando é persistido como `QUEUED`. No polling, um claim transacional no PostgreSQL seleciona e marca os comandos disponibilizados na resposta como `DELIVERED`.
+- `DELIVERED` indica disponibilização pela API, não confirmação de recebimento pelo ESP32. `ACKNOWLEDGED` registra essa confirmação; `SUCCEEDED` e `FAILED` registram o resultado informado pelo dispositivo e não são, por si só, confirmação independente do estado físico. `SUCCEEDED`, `FAILED` e `EXPIRED` são terminais.
+- O polling só disponibiliza comandos a dispositivos com status administrativo `ACTIVE`; comandos podem permanecer na fila enquanto o dispositivo está `PROVISIONING` e expirar antes de ser ativado.
+- Comandos sem confirmação podem ser disponibilizados novamente após 30 segundos, sem máximo de tentativas antes de `expiresAt`. `attempts` conta disponibilizações; `deliveredAt` registra a disponibilização mais recente.
+- A expiração é materializada sob demanda durante polling e transições do comando. Um worker agendado poderá ser considerado se for necessário atualizar comandos inativos sem novas requisições.
+- Comandos do SGM exigem `idempotencyKey`, única por dispositivo. Repetir a chave com a mesma intenção retorna o comando original; mudar dispositivo, tipo, payload ou expiração gera conflito.
+- Eventos são deduplicados por dispositivo e `eventId`. `receivedAt` é o horário confiável de ingestão e ordena eventos recebidos; a última ocorrência `STATE_REPORTED` nessa ordem significa apenas o último estado reportado recebido pela API, não uma confirmação independente do estado físico atual.
+- Eventos de confirmação e resultado carregam `commandId` no payload. O service verifica que o comando pertence ao dispositivo; o banco ainda não mantém uma FK entre evento e comando.
+- Um resultado de execução exige que o comando já esteja `ACKNOWLEDGED`; o evento de confirmação deve ser recebido primeiro. Eventos atrasados são registrados, mas não substituem estados terminais.
+- Uma evolução futura poderá adicionar `bootId` e sequência monotônica por dispositivo para detectar lacunas, duplicações e reordenação entre reinicializações. Isso requer protocolo e suporte no firmware.
+
 ## Topologia inicial
 
 SGM backend → IoT Platform API → PostgreSQL/Neon
