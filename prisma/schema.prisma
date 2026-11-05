@@ -10,3 +10,133 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Ciclo de vida administrativo do dispositivo.
+// Conectividade será calculada com base em lastSeenAt.
+enum DeviceStatus {
+  PROVISIONING
+  ACTIVE
+  DISABLED
+}
+
+// Funções disponíveis na plataforma.
+enum DeviceFunction {
+  LIGHTING
+}
+
+// Estados do processamento de comandos.
+enum CommandStatus {
+  QUEUED
+  DELIVERED
+  ACKNOWLEDGED
+  SUCCEEDED
+  FAILED
+  EXPIRED
+}
+
+model Store {
+  id         String  @id @default(uuid()) @db.Uuid
+  name       String
+  externalId String? @unique
+
+  sectors   Sector[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("stores")
+}
+
+model Sector {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+
+  storeId    String  @db.Uuid
+  parentId   String? @db.Uuid
+  externalId String?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
+
+  parent Sector? @relation("SectorHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+
+  children Sector[] @relation("SectorHierarchy")
+
+  devices   Device[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([storeId, externalId])
+  @@index([storeId, parentId])
+  @@map("sectors")
+}
+
+model Device {
+  id              String         @id @default(uuid()) @db.Uuid
+  deviceUid       String         @unique
+  name            String
+  function        DeviceFunction
+  status          DeviceStatus   @default(PROVISIONING)
+  firmwareVersion String?
+
+  sectorId String @db.Uuid
+  sector   Sector @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+
+  lastSeenAt DateTime? @db.Timestamptz(3)
+
+  events   DeviceEvent[]
+  commands DeviceCommand[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([sectorId, status])
+  @@map("devices")
+}
+
+model DeviceEvent {
+  id        String @id @default(uuid()) @db.Uuid
+  deviceId  String @db.Uuid
+  eventId   String
+  eventType String
+  payload   Json?
+
+  occurredAt DateTime @db.Timestamptz(3)
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@unique([deviceId, eventId])
+  @@index([deviceId, receivedAt])
+  @@index([eventType, receivedAt])
+  @@map("device_events")
+}
+
+model DeviceCommand {
+  id          String        @id @default(uuid()) @db.Uuid
+  deviceId    String        @db.Uuid
+  commandType String
+  payload     Json
+  status      CommandStatus @default(QUEUED)
+
+  idempotencyKey String?
+  requestedBy    String?
+
+  attempts       Int       @default(0)
+  expiresAt      DateTime  @db.Timestamptz(3)
+  deliveredAt    DateTime? @db.Timestamptz(3)
+  acknowledgedAt DateTime? @db.Timestamptz(3)
+  completedAt    DateTime? @db.Timestamptz(3)
+
+  result    Json?
+  errorCode String?
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([deviceId, idempotencyKey])
+  @@index([deviceId, status, createdAt])
+  @@index([status, expiresAt])
+  @@map("device_commands")
+}

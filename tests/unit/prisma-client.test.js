@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 const testOnlyDatabaseUrl =
@@ -44,20 +47,30 @@ test('requires DATABASE_URL before initializing Prisma Client', () => {
       console.log(error.message);
     }
   `;
+  const temporaryEnvDirectory = mkdtempSync(join(tmpdir(), 'iot-platform-api-env-'));
+  const emptyEnvFile = join(temporaryEnvDirectory, '.env');
+  writeFileSync(emptyEnvFile, '');
+
   const childEnv = { ...process.env };
   delete childEnv.DATABASE_URL;
+  childEnv.DOTENV_CONFIG_PATH = emptyEnvFile;
 
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-    env: childEnv
-  });
+  try {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: childEnv
+    });
 
-  assert.equal(result.error, undefined, result.error?.message);
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /DATABASE_URL/);
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /DATABASE_URL/);
 
-  const childOutput = `${result.stdout}${result.stderr}`;
-  assert.doesNotMatch(childOutput, /postgres(?:ql)?:\/\//i);
-  assert.equal(childOutput.includes('test:test'), false);
+    const childOutput = `${result.stdout}${result.stderr}`;
+    assert.doesNotMatch(childOutput, /postgres(?:ql)?:\/\//i);
+    assert.equal(childOutput.includes('test:test'), false);
+  } finally {
+    unlinkSync(emptyEnvFile);
+    rmdirSync(temporaryEnvDirectory);
+  }
 });

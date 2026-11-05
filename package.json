@@ -11,7 +11,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "test:db": "node scripts/test-db-connection.js"
+    "test:db": "node scripts/check-db-connection.js"
   },
   "dependencies": {
     "@prisma/adapter-neon": "7.10.1",
