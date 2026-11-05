@@ -1,0 +1,19 @@
+
+services:
+  postgres-test:
+    image: postgres:17-alpine
+    restart: "no"
+    environment:
+      POSTGRES_DB: iot_platform_test
+      POSTGRES_USER: iot_test
+      POSTGRES_PASSWORD: iot_test_local_only
+    ports:
+      - "127.0.0.1:54329:5432"
+    shm_size: 128mb
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U iot_test -d iot_platform_test
+      interval: 3s
+      timeout: 3s
+      retries: 20

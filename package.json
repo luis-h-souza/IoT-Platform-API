@@ -10,14 +10,17 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "node --test",
+    "test": "node --test \"tests/unit/**/*.test.js\" \"tests/integration/**/*.test.js\"",
+    "test:integration:db": "node --test --test-concurrency=1 \"tests/postgres/**/*.integration.test.js\"",
     "test:db": "node scripts/check-db-connection.js"
   },
   "dependencies": {
     "@prisma/adapter-neon": "7.10.1",
+    "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "7.10.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "pg": "^8.23.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {

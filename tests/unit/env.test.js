@@ -11,18 +11,27 @@ test('uses defaults when environment variables are not provided', () => {
 });
 
 test('accepts valid settings and converts a string PORT to a number', () => {
+  const testDatabaseUrl =
+    'postgresql://iot_test:iot_test_local_only@127.0.0.1:54329/iot_platform_test?schema=public';
+
   assert.deepEqual(
     parseEnv({
       NODE_ENV: 'test',
       PORT: '3000',
-      LOG_LEVEL: 'debug'
+      LOG_LEVEL: 'debug',
+      TEST_DATABASE_URL: testDatabaseUrl
     }),
     {
       NODE_ENV: 'test',
       PORT: 3000,
-      LOG_LEVEL: 'debug'
+      LOG_LEVEL: 'debug',
+      TEST_DATABASE_URL: testDatabaseUrl
     }
   );
+});
+
+test('requires TEST_DATABASE_URL in the test environment', () => {
+  assert.throws(() => parseEnv({ NODE_ENV: 'test' }), /TEST_DATABASE_URL/);
 });
 
 test('accepts PORT when it is already a number', () => {
